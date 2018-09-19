@@ -1,0 +1,183 @@
+---
+title: 'Yesterdays Quarter Mile Times'
+output:
+  pdf_document:
+    includes:
+      in_header: mystyles.sty
+---
+
+
+
+\begin{center}
+\Large\textbf{`r this_car$vehicle`}\break
+\normalsize\text{`r this_car$owner`}
+\end{center}
+
+
+\small
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+panderOptions('knitr.auto.asis', TRUE)
+car_stats<-
+  this_car%>%
+  select(cyl,hp,disp,wt,mpg,qsec)
+
+row.names(car_stats)<-NULL
+colnames(car_stats)<-c("Cylinders","Horsepower","Displacement","Weight","Avg\nMPG","Longstanding\nPersonal\nRecord\n(PR)")
+
+pander(car_stats
+         # ,emphasize.strong.rows=c(1,3,5,7,9,11,13,15,17,19,21,23,25)
+         ,keep.line.breaks = TRUE
+         ,caption=paste0("**Vehicle Specs**")
+         ,split.table=Inf
+         ,split.cells=c(2,3,5,4,5) 
+         ,justify=c('center','center','center','center','center','center')
+)
+
+
+
+
+```
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+panderOptions('knitr.auto.asis', TRUE)
+
+  
+  todays_runs<-
+      these_runs%>%
+      mutate(todays_qsec = sprintf("%.5f",latest_qsec))%>%
+      select(run,todays_qsec,beat_pr)
+  
+  
+  row.names(todays_runs)<-NULL
+  colnames(todays_runs)<-c("Run #","Time\n(secs)","Beat\nPR")
+  if(any(todays_runs[,"Beat\nPR"]=="Yes")){
+    emphasize.strong.rows(which(todays_runs[,"Beat\nPR"]=="Yes"))
+    emphasize.italics.rows(which(todays_runs[,"Beat\nPR"]=="Yes"))
+  }
+  
+  pander(todays_runs
+           # ,emphasize.strong.rows=c(1,3,5,7,9,11,13,15,17,19,21,23,25)
+           ,keep.line.breaks = TRUE
+           ,caption=paste0("**Yesterday's Quater Mile Times**")
+           ,split.table=Inf
+           ,split.cells=c(1,8,3) 
+           ,justify=c('center','center','center')
+  )
+
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+### Stats of the two types of shift groups (clario vs non-clario) + total
+# stats on the shift pre go live
+
+
+# summ_tab01<-
+#   these_runs%>%
+#   summarize(prev_pr = min(qsec)
+#             ,latest_pr = min(latest_qsec)
+#             ,diff = latest_pr - prev_pr
+#             )%>%
+#   mutate(pretty_prev_pr = cell_spec(sprintf("%.5f",prev_pr),"latex", bold = T, font_size = 20
+#                       ,color= brewer_pal(pal = "Set1")(1))
+#          ,pretty_latest_pr = cell_spec(sprintf("%.5f",latest_pr),"latex", bold = T, font_size = 20
+#                       ,color= brewer_pal(pal = "Set1")(2)[2])
+#          ,pretty_diff = cell_spec(sprintf("%.5f",diff),"latex", bold = T, font_size = 20
+#                       ,color= "#000000")
+#   )%>%
+#   select(-prev_pr,-latest_pr,-diff)
+# 
+# 
+# row.names(summ_tab01)<-NULL
+# colnames(summ_tab01)<-c("Prev\nPR","Yesterdays\nPR","Difference")
+
+```
+
+<!-- \begin{center} -->
+<!-- \\bgroup\\fontsize{20}{22}\\selectfont \\textcolor[HTML]{E41A1C}{\\textbf{17.02000}}\\egroup{} -->
+<!-- \\bgroup\\fontsize{20}{22}\\selectfont \\textcolor[HTML]{377EB8}{\\textbf{19.18968}}\\egroup{} -->
+<!-- \\bgroup\\fontsize{20}{22}\\selectfont \\textcolor[HTML]{000000}{\\textbf{2.16968}}\\egroup{} -->
+<!-- \end{center} -->
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# summ_tab01 %>%
+#   kable("latex", booktabs = T, align = "c", escape = F) %>%
+#   column_spec(1:2, border_right = T) #%>%
+#   # row_spec(1, bold = T, font_size = 22)
+
+```
+
+
+&nbsp;
+
+
+\begin{center}
+\large\textbf{
+Distribution of Yesterday's Quarter Mile Times}
+\end{center}
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8.5, fig.height=4.8}
+hplims<-
+  my_hp_class%>%
+  summarize(min_time = floor(min(latest_qsec))-1
+            ,max_time = ceiling(max(latest_qsec))+1
+            )
+
+l<-ggplot(data = my_hp_class, aes(latest_qsec)) +
+  geom_histogram(aes(y=..count..) 
+                   ,breaks = seq(hplims$min_time,hplims$max_time,by=1)
+                   ,colour="black"
+                   ,fill="grey") +
+  scale_x_continuous(breaks = seq(hplims$min_time,hplims$max_time,by=1)) +
+  # facet_wrap(~Shift_Group,ncol=2,scales="free") +
+  geom_vline(data=these_runs, mapping=aes(xintercept=latest_qsec,colour=ifelse(latest_qsec<this_car$qsec,"Beat PR","Missed PR")),size=1) +
+  geom_vline(data=this_car, mapping=aes(xintercept=qsec,colour="PR"),size=1,linetype="longdash") +
+  # geom_vline(data=ars_summ_final, mapping=aes(xintercept=minimum,colour="Shift Min"),size=1,linetype="longdash")+
+  labs(title=paste0("Vs HP Class: ",this_car$hp_cat)) +
+  ylab("Count") +
+  xlab("Times") +
+  theme(axis.text.x=element_text(size=11,vjust=.5) ,text=element_text(size=11),plot.title=element_text(hjust=0.5),
+        legend.position = "bottom") +
+  scale_color_manual(name=paste(this_car$vehicle), values=c(
+                                                              "Beat PR"="forestgreen",
+                                                              "PR"="darkgoldenrod1",
+                                                              "Missed PR"="dodgerblue"
+                                                              ))
+mpglims<-
+  my_mpg_class%>%
+  summarize(min_time = floor(min(latest_qsec))-1
+            ,max_time = ceiling(max(latest_qsec))+1
+            )
+r<-
+  ggplot(data = my_mpg_class, aes(latest_qsec)) +
+  geom_histogram(aes(y=..count..) 
+                   ,breaks = seq(mpglims$min_time,mpglims$max_time,by=1)
+                   ,colour="black"
+                   ,fill="grey") +
+  scale_x_continuous(breaks = seq(mpglims$min_time,mpglims$max_time,by=1)) +
+  # facet_wrap(~Shift_Group,ncol=2,scales="free") +
+  geom_vline(data=these_runs, mapping=aes(xintercept=latest_qsec,colour=ifelse(latest_qsec<this_car$qsec,"Beat PR","Missed PR")),size=1) +
+  geom_vline(data=this_car, mapping=aes(xintercept=qsec,colour="PR"),size=1,linetype="longdash") +
+  # geom_vline(data=ars_summ_final, mapping=aes(xintercept=minimum,colour="Shift Min"),size=1,linetype="longdash")+
+  labs(title=paste0("Vs MPG Class: ",this_car$mpg_cat)) +
+  ylab("Count") +
+  xlab("Times") +
+  theme(axis.text.x=element_text(size=11,vjust=.5) ,text=element_text(size=12),plot.title=element_text(hjust=0.5),
+        legend.position = "bottom") +
+  scale_color_manual(name=paste(this_car$vehicle), values=c(
+                                                              "Beat PR"="forestgreen",
+                                                              "Missed PR"="dodgerblue",
+                                                              "PR"="darkgoldenrod1"
+                                                              ))
+
+grid.arrange(l,r,ncol=2)
+
+```
